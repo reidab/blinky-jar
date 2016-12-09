@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require 'erb'
+
 SIZE_X = 27
 SIZE_Y = 11
 PIXEL_COUNT = SIZE_X * SIZE_Y
@@ -60,12 +62,7 @@ Patchfile = Struct.new(:path, :universes, :size_x, :size_y)
 class Patchfile
   def write
     File.open(path, 'w') do |f|
-      f.puts '#GLEDIATOR Patch File'
-      f.puts "##{Time.now}"
-
-      f.puts matrix_size
-      f.puts universe_definitions
-      f.puts pixel_mappings
+      f.puts ERB.new(DATA.read, nil, '-').result(binding)
     end
   end
 
@@ -83,50 +80,12 @@ class Patchfile
     universes.map(&:pixels).flatten
   end
 
+  def patched_pixels
+    pixels.select(&:patched?)
+  end
+
   def patch(&block)
     block.yield pixels
-  end
-
-  private
-
-  def matrix_size
-    [
-      "Patch_Matrix_Size_X=#{size_x}",
-      "Patch_Matrix_Size_Y=#{size_y}"
-    ]
-  end
-
-  def universe_definitions
-    ["Patch_Num_Unis=#{universes.count}"] + universes.map do |universe|
-      universe_definition(universe)
-    end
-  end
-
-  def universe_definition(universe)
-    base = "Patch_Uni_ID_#{universe.id}"
-
-    ip_definition = universe.ip.split('.').map.with_index do |part, i|
-      "#{base}_IP#{i + 1}=#{part}"
-    end
-
-    ip_definition + [
-      "#{base}_Uni_Nr=#{universe.number}",
-      "#{base}_Net_Nr=#{universe.net}",
-      "#{base}_Sub_Net_Nr=#{universe.subnet}",
-      "#{base}_Num_Ch=#{universe.channel_count}"
-    ]
-  end
-
-  def pixel_mappings
-    universes.map(&:pixels).flatten.select(&:patched?).map do |pixel|
-      base = "Patch_Pixel_X_#{pixel.x}_Y_#{pixel.y}"
-      [
-        "#{base}_Uni_ID=#{pixel.universe.id}",
-        "#{base}_Ch_R=#{pixel.red.cid}",
-        "#{base}_Ch_G=#{pixel.green.cid}",
-        "#{base}_Ch_B=#{pixel.blue.cid}"
-      ].join("\n")
-    end
   end
 end
 
@@ -153,3 +112,27 @@ end
 
 patchfile.print_ascii_preview
 patchfile.write
+
+__END__
+#GLEDIATOR Patch File
+#<%= Time.now %>
+Patch_Matrix_Size_X=<%= size_x %>
+Patch_Matrix_Size_Y=<%= size_y %>
+Patch_Num_Unis=<%= universes.count %>
+<% universes.each do |universe| -%>
+<% universe_base = "Patch_Uni_ID_#{universe.id}" -%>
+<% universe.ip.split('.').map.with_index do |part, i| -%>
+<%= universe_base %>_IP<%= i + 1 %>=<%= part %>
+<% end -%>
+<%= universe_base %>_Uni_Nr=<%= universe.number %>
+<%= universe_base %>_Net_Nr=<%= universe.net %>
+<%= universe_base %>_Sub_Net_Nr=<%= universe.subnet %>
+<%= universe_base %>_Num_Ch=<%= universe.channel_count %>
+<% end -%>
+<% patched_pixels.each do |pixel| -%>
+<% pixel_base = "Patch_Pixel_X_#{pixel.x}_Y_#{pixel.y}" -%>
+<%= pixel_base %>_Uni_ID=<%= pixel.universe.id %>
+<%= pixel_base %>_Ch_R=<%= pixel.red.cid %>
+<%= pixel_base %>_Ch_G=<%= pixel.green.cid %>
+<%= pixel_base %>_Ch_B=<%= pixel.blue.cid %>
+<% end -%>

@@ -1,15 +1,13 @@
+// https://github.com/esp8266/Arduino
 #include<ESP8266WiFi.h>
-
-#include<FastLED.h>
-
 #include<DNSServer.h>
 #include<ESP8266WebServer.h>
-#include<WiFiManager.h>
-
 #include<ESP8266mDNS.h>
-
 #include <WiFiUdp.h>
-#include <ArtnetWifi.h>
+
+#include<WiFiManager.h> // https://github.com/tzapu/WiFiManager
+#include<FastLED.h> // http://fastled.io
+#include <ArtnetWifi.h> // https://github.com/rstephan/ArtnetWifi
 
 #define DATA_PIN 7
 #define CLOCK_PIN 5

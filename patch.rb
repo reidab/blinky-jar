@@ -2,6 +2,13 @@
 
 require 'erb'
 
+BLINKY_IP = ARGV[0]
+
+unless BLINKY_IP
+  puts "Usage: ruby patch.rb <lamp ip>"
+  exit 1
+end
+
 SIZE_X = 27
 SIZE_Y = 11
 PIXEL_COUNT = SIZE_X * SIZE_Y
@@ -90,8 +97,8 @@ class Patchfile
 end
 
 universes = [
-  Universe.new('192.168.0.20', 0),
-  Universe.new('192.168.0.20', 1)
+  Universe.new(BLINKY_IP, 0),
+  Universe.new(BLINKY_IP, 1)
 ]
 
 patchfile = Patchfile.new('patch.gled', universes, SIZE_X, SIZE_Y)

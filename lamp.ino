@@ -1,3 +1,5 @@
+// ESP8266 Firmware for driving APA102 LEDs via ArtNet over wifi
+
 // https://github.com/esp8266/Arduino
 #include<ESP8266WiFi.h>
 #include<DNSServer.h>

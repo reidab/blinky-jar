@@ -5,6 +5,7 @@ require 'erb'
 BLINKY_IP = ARGV[0]
 
 unless BLINKY_IP
+  puts "Generates a Glediator (http://www.solderlab.de/index.php/software/glediator) patch file"
   puts "Usage: ruby patch.rb <lamp ip>"
   exit 1
 end

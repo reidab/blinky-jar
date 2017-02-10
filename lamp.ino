@@ -24,20 +24,19 @@
 
 #define FIRST_UNIVERSE 0
 #define NECESSARY_UNIVERSES ((NUM_CHANNELS / 512) + ((NUM_CHANNELS % 512) ? 1 : 0))
+#define PIXELS_PER_UNIVERSE 170
 
 CRGBArray<NUM_LEDS> leds;
-uint8_t baseHue = 0;
 
 ArtnetWifi artnet;
 bool artnetReceived = false;
-bool universesReceived[NECESSARY_UNIVERSES];
-bool haveAllUniverses = true;
-int previousDataLength = 0;
 
 void allOff() { 
   leds.fill_solid(CHSV(0,0,0));
   FastLED.show(); 
 }
+
+uint8_t baseHue = 0;
 
 void rainbowCycle() {
   static uint8_t hue;
@@ -48,13 +47,56 @@ void rainbowCycle() {
   FastLED.delay(33);
 }
 
-void onDmxFrame(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t* data) {
+void printFrameInfo(uint8_t universe, uint8_t sequence, uint16_t length) {
+  Serial.print("[#");
+  Serial.print((int) sequence);
+  Serial.print(" ");
   Serial.print((int) universe);
+  Serial.print("/");
+  Serial.print((int) length);
+  Serial.print("]");
+}
+
+void printFrameData(uint8_t* data) {
+  int dataLength = 512;
+  for (int i = 0; i < dataLength; i++) {
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println((int) data[i]);
+    delay(0);
+  }
+}
+
+bool universesReceived[NECESSARY_UNIVERSES];
+bool framesSinceLastPaint = 0;
+
+void onDmxFrame(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t* data) {
+  bool bufferedControl = true;
+  bool haveAllUniverses = true;
   uint8_t universeIndex = universe - FIRST_UNIVERSE;
+
+  // Allow unbuffered control on universe i + 10
+  if (universeIndex >= 10) {
+    bufferedControl = false;
+    universeIndex -= 10;
+  }
 
   // Stop the idle loop on first ArtNet frame
   artnetReceived = true;
 
+  // printFrameInfo(universe, sequence, length);
+  // printFrameData(data);
+
+  for (int i = 0; i < PIXELS_PER_UNIVERSE; i++) {
+    int ledIndex = i + (universeIndex * PIXELS_PER_UNIVERSE) + (LEADER_SIZE - 1);
+
+    if (ledIndex >= NUM_LEDS)
+      break;
+
+    leds[ledIndex] = CRGB(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
+  }
+
+  if (universeIndex == FIRST_UNIVERSE) { memset(universesReceived, 0, NECESSARY_UNIVERSES); }
   if (universeIndex < NECESSARY_UNIVERSES) { universesReceived[universeIndex] = true; }
 
   haveAllUniverses = true;
@@ -65,15 +107,8 @@ void onDmxFrame(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t* d
     }
   }
 
-  for (int i = 0; i < length / 3; i++) {
-    int ledIndex = (i + universeIndex * (previousDataLength / 3)) + LEADER_SIZE - 1;
-
-    if (ledIndex < NUM_LEDS)
-      leds[ledIndex] = CRGB(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
-  }
-  previousDataLength = length;
-
-  if (haveAllUniverses) {
+  if (haveAllUniverses || !bufferedControl) {
+    // Serial.print('.');
     FastLED.show();
     memset(universesReceived, 0, NECESSARY_UNIVERSES);
   }

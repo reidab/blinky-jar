@@ -42,6 +42,10 @@ class Universe
       @pixels.push Pixel.new(self, *rgb_channels)
     end
   end
+
+  def patched_pixels
+    pixels.select(&:patched?)
+  end
 end
 
 Pixel = Struct.new(:universe, :red, :green, :blue, :x, :y)
@@ -70,6 +74,13 @@ class Patchfile
   def write
     File.open(path, 'w') do |f|
       f.puts ERB.new(DATA.read, nil, '-').result(binding)
+    end
+  end
+
+  def summarize
+    universes.each do |universe|
+      patched_count = universe.patched_pixels.count
+      puts "Universe #{universe.id}: #{patched_count * 3} channels / #{patched_count} pixels"
     end
   end
 
@@ -117,6 +128,7 @@ patchfile.patch do |pixels|
   end
 end
 
+patchfile.summarize
 patchfile.print_ascii_preview
 patchfile.write
 
